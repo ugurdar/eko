@@ -1,0 +1,711 @@
+---
+title: "Ekonometri-I Ödev"
+author: "Uğur Dar"
+subtitle: "TC.No 26074735082"
+date: "12 06 2020"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+
+```{r include=FALSE}
+# kütüphaneler
+library(readr)
+library(nortest)
+library(car)
+library(ggplot2)
+library(lmtest)
+library(dplyr)
+library(lubridate)
+```
+
+
+
+
+```{r include=FALSE}
+library(readr)
+tablo <- read_delim("C:/Users/gr/Desktop/tablo1111.csv", 
+    ";", escape_double = FALSE, trim_ws = TRUE)
+
+tablo <- tablo[-21,]
+
+
+```
+
+### Verinin Düzenlenmesi
+
+```{r}
+tablo$Maas <- tablo$Maas + 6       # TcNo 2. değer
+tablo$Egitim <- tablo$Egitim + 7   # TcNo 4. değer
+tablo$Deneyim <- tablo$Deneyim + 7 # TcNo 6. değer
+tablo
+```
+
+\newpage
+
+# 1.a) EKK
+
+```{r}
+model <- lm(Maas~.,data=tablo)
+summary(model)
+```
+- Çoklu doğrusal regresyon modeli çıktısında, eğitim değişkeni 0.05 düzeyinde anlamlı değil, 0.10 düzeyinde anlamlı gözükmektedir.
+
+- Deneyim bağımsız değişkeni 0.05 düzeyinde anlamlı değildir.
+
+- R-kare değeri 0.1868 ve düzeltilmiş R-kare değeri 0.09 olarak bulunmuştur. Kurulan modelde bağımsız değişkenlerin, bağımlı değişkenleri açıklama oranı çok düşüktür.
+
+```{r}
+qf(p = 0.95 ,df1 = 2,df2 = 17)
+```
+- F Tablo(alfa = 0.05) değer: 3.59 > 1.952 olduğundan, F testine göre model 0.05 anlamlılık düzeyinde, anlamlı değildir denilebilir.
+
+- p-value = 0.1725 > 0.05 olduğundan model 0.05 anlamlılık düzeyinde anlamlı değildir denilebilir.
+Bağımlı değiken bağımsız değikenler tarafından %0.9 oranında açıklanmaktadır.
+
+\newpage
+
+
+# 1.b) Artıkların, Bağımsız Değişkenlere Karşı Grafikleri
+ 
+## Artıklar - Deneyim Grafiği
+
+```{r fig.height=3.5, fig.width=5}
+ggplot(tablo,aes(x=Deneyim,y=model$residuals))+
+  geom_jitter() +
+  labs(x = "Deneyim",y="Artıklar",title="Deneyim ~ Artıklar Serpilme Diyagramı")+
+  theme_bw()
+```
+
+- Deneyim değişkeninin artıklara göre serpilme diyagramında noktalar rasgele dağılmıştır, değişen varyans sorunu olmayabilir. Aykırı değer olduğundan regresyon doğrusunun eğimi bu aykırı değerden çok fazla etkilenir. Yapılan yorum subjektif olup gerekli testler yapılarak varsayımlar incelenmelidir.
+
+\newpage
+
+## Artıklar - Eğitim
+
+```{r fig.height=3.5, fig.width=5}
+ggplot(tablo,aes(x=Egitim,y=model$residuals))+
+  geom_jitter() +
+  labs(x = "Eğitim",y="Artıklar",title="Eğitim ~ Artıklar Serpilme Diyagramı")+
+  theme_bw()
+```
+
+- Eğitim değişkeninin artıklara göre serpilme diyagramında noktalar rasgele dağılmamıştır, önce artan sonra azalan varyans gözükmektedir, değişen varyans sorunu olabilir. Deneyim değişkenin de olduğu gibi burada da bir aykırı değer gözükmektedir. Yapılan yorum subjektif olup gerekli testler yapılarak otokorelasyon incelenmelidir.
+
+\newpage
+
+# 1.c) Artıkların Histogramı
+
+
+```{r fig.height=3.5, fig.width=5}
+artik <- as.data.frame(model$residuals)
+ggplot(artik, aes(x=model$residuals)) + 
+ geom_histogram(aes(y=..density..), colour="black", fill="white")+
+ geom_density(alpha=.5, fill="#FF6666") +
+ labs(x="Artıklar",y="Dağılım",title="Artıkların Histogramı")
+```
+
+- Artıkların aykırı değerden çok fazla etkilendiği gözükmektedir. Eğer aykırı değerler olmasıydı sola çarpık bir dağılıma sahip olacaktı. Burada artıkların
+normal dağılmadığı söylenebilir ancak yapılan yorum subjektif olup normallik testleri yapılmalıdır.
+
+\newpage
+
+# 1.d) Q-Q Plot
+
+
+
+```{r fig.height=3.5, fig.width=5}
+qqPlot(model$residuals,distribution = "norm",ylab="Artıklar",xlab="Norm Quantiles",
+       main="Artıklar - Q-Q Plot (%95 Güven Aralığı)",
+       pch = 16,col.lines = "#FF6666")
+```
+- Artıkların teorik değerlerle karşılaştırıldığında bir çoğunun %95 güven aralığının içinde kaldığı gözükmektedir ancak aykırı değerler %95 güven aralığının dışında kalmıştır. Artıkların normallik varsayımı ihlal edilmiş görünüyor.
+
+\newpage
+
+# 1.e) Normallik Testleri
+
+
+```{r}
+artik <- model$residuals
+shapiro.test(artik)
+```
+```{r}
+ad.test(artik)
+```
+
+```{r warning=FALSE}
+ks.test(artik,"pnorm",exact = FALSE)
+```
+
+Shapiro-Wilk, Anderson-Darling, Kolmogorov-Smirnov testlerine göre artiklar normal dağılmamaktadır.
+
+\newpage
+
+# 1.f) Park Testi
+
+
+
+n = 20 , anlamlılık düzeyi: 0.05 
+t tablo değeri :  2.09  
+
+## Regresyon Modeli
+
+```{r}
+data <- tablo
+x1 <- data$Egitim
+x2 <- data$Deneyim
+y <- data$Maas
+data <- cbind(y,x1,x2)
+data <- as.data.frame(data)
+lmfit <- lm(y~.,data=data)
+ei  <- lmfit$residuals
+ei2 <- ei^2
+dt <- data.frame(lnei2 = log(ei2),x1 = log(x1),x2=log(x2))
+lmfit1 <- lm(lnei2~x1,data=dt)
+```
+
+
+\begin{equation}\ln \left(u_{i}^{2}\right)=\widehat{\beta}_{0}+\widehat{\beta}_{1} X_{i}+v_{i}\end{equation}
+
+```{r}
+lmfit1 <- lm(lnei2~x1,data=dt)
+summary(lmfit1)
+```
+
+\begin{equation}\ln (u^2)=56.353 - 15.881 X_{1}+v_{i}\end{equation}
+Şeklinde model tahmin edilmiştir.
+x1(Eğitim)'in katsayısı anlamlı 0.05 anlamlılık düzeyinde anlamlı olduğu için x1(Eğitim) değişkeninden kaynaklı değişen varyans vardır denilebilir.
+
+\newpage
+
+```{r}
+lmfit2 <- lm(lnei2~x2,data=dt)
+summary(lmfit2)
+```
+
+\begin{equation}\ln (u^2)=5.393 + 1.260 X_{2}+v_{i}\end{equation}
+Şeklinde model tahmin edilmiştir.
+x2(Deneyim)'in katsayısı 0.05 anlamlılık düzeyinde anlamlı olmadığı için x2'den kaynaklanan değişen varyans vardır diyemeyiz.
+
+
+#### Sonuç: 
+Park testine göre, ayrı ayrı kurulan modellerde, x2(Deneyim) değişkeninden kaynaklı değişen varyans gözükmemektedir ancak x1(Eğitim) değişkeninden kaynaklı değişen varyans sorunu vardır.
+
+\newpage
+
+# 1.g)  Goldfeld-Quandt testi
+
+
+```{r}
+
+lm.fit <- lm(tablo$Maas~tablo$Egitim + tablo$Deneyim,data=tablo)
+gqtest(lm.fit,fraction=3) # c = 3
+```
+
+H0:Sabit varyans varsayimi gecerlidir.
+
+Hazır fonksiyon yardımıyla yapılan testte, H0 hipotezi reddedilemez.
+Yani sabit varyans yoktur denilemez.
+Her iki bağımsız değişken için de ayrı ayrı Goldfeld-Quandt testi yapılarak aşağıdaki sonuçlara ulaşılır.
+
+## Eğitim Değişkeni için Goldfeld-Quandt Testi
+
+### 1. ve 2. adım
+
+```{r}
+dt <- data.frame(Maas = tablo$Maas,Egitim = tablo$Egitim)
+dt <- dt[order(dt$Egitim),] # Egitimin artan değerlerine göre sıraladık.
+# Veri setini c=3 için 3 değeri atarak 2'ye bölersek
+# (20-3)/2 =8.5  8 ve 9 birimden oluşan iki yeni grup yaparsak
+dt1 <- dt[1:9,]   # 9 birimden oluşuyor
+dt2 <- dt[13:20,] # 8 birimden oluşuyor
+dt
+```
+
+\newpage
+
+### 3.,4. adım ve Karar
+
+```{r}
+model1 <- lm(Maas~Egitim,data=dt1)# Veri setinin ilk kısmıyla kurulan model.
+model2 <- lm(Maas~Egitim,data=dt2)# Veri setinin ikinci kısmıyla kurulan model.
+e1 <- residuals(model1)
+ss1 <- sum(e1^2)              # 1.model için SS_1.
+e2 <- residuals(model2)
+ss2 <- sum(e2^2)              # 2.model için SS_2.
+sd <- (20-3)/2-2              # sd=(n-c)/2-k
+lambda <- (ss2/sd)/(ss1/sd)   # Lambdanın hesaplanması.
+Ftablo <- qf(1-0.05,sd,sd)    # F-Tablo değeri.
+if(lambda > Ftablo){
+  paste("Labmda =",round(lambda,3)," ve F Tablo değeri =",round(Ftablo,3),
+        "Lambda > F_T olduğundan Sabit varyans rededilebilir.")
+}else{
+  cat("Labmda =",round(lambda,3)," ve F Tablo değeri =",round(Ftablo,3),"\n",
+      "Lambda < F_T olduğundan Sabit varyans rededilemez.")
+}
+
+```
+
+\newpage
+
+## Deneyim Değişkeni için Goldfeld-Quandt Testi
+
+
+### 1. ve 2. adım
+
+```{r}
+dt <- data.frame(Maas = tablo$Maas,Deneyim = tablo$Deneyim)
+dt <- dt[order(dt$Deneyim),] # Deneyim değişkenini artan değerlerine göre sıralandı.
+# Veri setini c=3 için 3 değeri atarak 2'ye bölersek
+# (20-3)/2 =8.5  8 ve 9 birimden oluşan iki yeni grup yaparsak
+dt1 <- dt[1:9,]   # 9 birimden oluşuyor
+dt2 <- dt[13:20,] # 8 birimden oluşuyor
+dt
+```
+
+\newpage
+
+### 3.,4. adım ve Karar
+
+```{r}
+model1 <- lm(Maas~Deneyim,data=dt1)# Veri setinin ilk kısmıyla kurulan model.
+model2 <- lm(Maas~Deneyim,data=dt2)# Veri setinin ikinci kısmıyla kurulan model.
+e1 <- residuals(model1)
+ss1 <- sum(e1^2)              # 1.model için SS_1.
+e2 <- residuals(model2)
+ss2 <- sum(e2^2)              # 2.model için SS_2.
+sd <- (20-3)/2-2              # sd=(n-c)/2-k
+lambda <- (ss2/sd)/(ss1/sd)   # Lambdanın hesaplanması.
+Ftablo <- qf(1-0.05,sd,sd)    # F-Tablo değeri.
+if(lambda > Ftablo){
+  paste("Labmda =",round(lambda,3)," ve F Tablo değeri =",round(Ftablo,3),
+        "Lambda > F_T olduğundan Sabit varyans rededilebilir.")
+}else{
+  cat("Labmda =",round(lambda,3)," ve F Tablo değeri =",round(Ftablo,3),"\n",
+      "Lambda < F_T olduğundan Sabit varyans rededilemez.")
+}
+```
+
+#### Sonuç:
+İki bağımsız değişken için de ayrı ayrı yapılan Goldfeld-Quandt testlerinde sabit varyans varsayımı reddedilememiştir. Goldfeld-Quandt testine göre sabit varyans varsayımı geçerlidir.
+
+
+
+
+
+
+
+
+\newpage
+
+# 1.h) Glejser Testi
+
+Artıkların mutlak değerini bağımlı, x1(Eğitim) ve x2(Deneyim) değişkenlerinin karekökünü bağımsız değişken olarak alarak regresyon modeli kurarsak;
+
+```{r}
+data <- tablo
+x1 <- data$Egitim
+x2 <- data$Deneyim
+y <- data$Maas
+data <- cbind(y,x1,x2)
+data <- as.data.frame(data)
+lmfit <- lm(y~x1+x2,data=data)
+res <- lmfit$residuals
+res <- abs(res) #Artıkların Mutlak değeri
+x1 <- sqrt(x1); x2 <- sqrt(x2);
+krk_data <- data.frame(res=res,x1=x1,x2=x2)
+lm_glej <- lm(res ~ x1+x2,data=krk_data)
+summary(lm_glej)
+```
+H0:Sabit varyans varsayimi gecerlidir
+
+Glejser testi ile H0 hipotezi reddedilemez,değişen varyans vardır diyemeyiz. Sabit varyans vardır.
+
+Glejser testi birden fazla bağımsız değişken olduğunda uygulandığı gibi her bir bağımsız değişken için ayrı ayrı uygulanabilir.
+
+\newpage
+
+### h) 1- Glejser Testi(ayrı ayrı bağımsız değişkenlerle)
+
+Sadece Eğitim değişkeni için model kurarsak
+
+```{r}
+krk_data <- data.frame(res=res,x1=x1,x2=x2)
+lm_glej <- lm(res ~ x1,data=krk_data)
+summary(lm_glej)
+```
+
+- Model anlamlı değil.
+
+Sadece Deneyim değişkeni için model kurarsak
+
+```{r}
+krk_data <- data.frame(res=res,x1=x1,x2=x2)
+lm_glej <- lm(res ~ x2,data=krk_data)
+summary(lm_glej)
+```
+
+- Model anlamlı değil.
+
+#### Sonuç:
+Değişkenler tek tek incelendiğinde de H0 hipotezi 0.05 anlamlılık düzeyinde reddedilemez, sabit varyans yoktur diyemeyiz. Glejser testine göre sabit varyans varsayımı geçerlidir.
+
+\newpage
+
+# 1.i) Spearman Sıra Korelâsyon Testi,
+
+### i) 1- Spearman Korelasyon Testi Maas-Eğitim
+
+
+
+```{r warning=FALSE}
+cor.test(tablo$Maas,tablo$Egitim,method = "spearman")
+```
+
+#### Sonuç:
+Yapılan bu testte H0 hipotezi rho=0'dır.
+H0 hipotezi 0.05 anlamlılık düzeyinde reddedilir.
+Böylece, açıklayıcı değişken ve artıklar arasında sistematik bir ilişki olduğu söylenebilir, sabit varyans varsayımı ihlal edilmiş olunur.
+
+
+### i) 2- Spearman Korelasyon Testi Maas-Deneyim
+
+
+```{r warning=FALSE}
+cor.test(tablo$Maas,tablo$Deneyim,method = "spearman")
+```
+
+#### Sonuç:
+Yapılan bu testte H0 hipotezi rho=0'dır.
+H0 hipotezi 0.05 anlam düzeyinde reddedilemez.
+Böylece, Deneyim açıklayıcı değişkeni ve artıklar arasında sistematik bir ilişki olduğuna dair kanıt yok ve değişen varyans olmadığı söylenebilir.
+
+\newpage
+
+# 1.j)  Breusch-Pagan-Godfrey Testi
+
+```{r}
+lm.fit <- lm(Maas~.,data=tablo)
+bptest(lmfit, varformula = NULL, studentize = TRUE, data = list())
+```
+
+#### Sonuç:
+H0 hipotezi: Sabit varyans vardır.
+Breusch-Pagan-Godfrey testi sonucu H0 reddedilemez. 0.05 anlamlılık düzeyinde Sabit varyans vardır.
+
+### Breusch-Pagan-Godfrey Testinin Algoritması
+
+```{r}
+data <- tablo
+x1 <- data$Egitim
+x2 <- data$Deneyim
+y <- data$Maas
+data <- cbind(y,x1,x2)
+data <- as.data.frame(data)
+dt <- data.frame(y,x1,x2)
+k <- 2
+# Adım-1 Regresyon modelini tahmin ediniz. Artıkların bulunması.
+lmfit <- lm(y~.,data=dt)
+res <- lmfit$residuals
+rss <- sum(res^2) # Artık kareler Toplamı
+# Adım-2  sigma karenin Maximum Likelihood Tahmicisi
+sigmasapka <- rss/length(x1)
+# Adım-3 pi değerinin hesaplanması
+p <- res^2/sigmasapka
+dt2 <- data.frame(p,x1,x2)
+# Adım-4 pi. regresyon modelinin kurulması
+lmfit2 <- lm(p~.,data=dt2)
+# Adım-5 
+essfit2 <- sum((lmfit2$fitted.values-mean(p))^2)
+Theta <- essfit2/2
+
+paste0("Theta = ",Theta)
+paste0("Ki-Kare ",k," serbestlik dereceli tablo değeri = ",qchisq(1-0.05,k))
+# Ki-Kare Tablo < Theta   -> Sabit varyans reddedilir
+if(qchisq(1-0.05,k) < Theta) "Sabit varyans reddedilir" else
+  "Sabit varyans vardır."
+```
+
+\newpage
+
+# 1.k) White Testi
+
+```{r}
+# White testi
+data <- tablo
+x1 <- data$Egitim
+x2 <- data$Deneyim
+y <- data$Maas
+data <- cbind(y,x1,x2)
+data <- as.data.frame(data)
+dt <- data.frame(y,x1,x2)
+N <- length(x1)
+
+# 1. Adım
+# Asıl modelin tahmini
+model1 <- lm(y~.,data=dt)
+# Asıl denklemdeki artıkların kareleri
+res2 <- model1$residuals^2
+
+
+# 2. Adım (Yardımcı regresyon)
+
+dt2 <- as.data.frame(cbind(res2,x1,x2,x1^2,x2^2,x1*x2))
+colnames(dt2) <- c("res2","x1","x2","x1x1","x2x2","x1x2")
+# Modelin Kurulması
+model2 <- lm(res2~.,data=dt2)
+k <- 5 # k değerimiz 5 açıklayıcı değişken olduğu için 5 oldu.
+a <- summary(model2)
+# 3. Adım 
+r2 <- a$r.squared #Yardımcı regresyonun R^2 değeri.
+nr2 <- N*r2
+
+paste("nR^2 = ",nr2)
+paste("Ki-Kare Alfa=0.05 k = 5 için = ",qchisq(1-0.05,k))
+# Karar:
+## 0.05 anlalımlık seviyesinde - Ki Kare (k=5)
+
+if(qchisq(1-0.05,k) < nr2) "Sabit varyans reddedilir, değişen varyans vardır denilebilir." else "Sabit varyans vardır"
+
+```
+
+\newpage
+
+# 1.l) Artıkların Gecikmeli Artıklara Göre Grafiği
+
+```{r}
+mdl <- lm(Maas~.,data=tablo)
+artik <- mdl$residuals
+lagartik <- lag(artik)
+df <- data.frame(artik,lagartik)
+df <- df[-1,]
+
+ggplot(df,aes(x=lagartik,y=artik))+
+  geom_jitter()+
+  geom_hline(yintercept = 0) +
+  geom_vline(xintercept = 0) +
+  labs(x="U_(t-1)",y="U_t",title="Artıkların bir önceki artıklara göre grafiği")
+
+```
+- Artıkların bir önceki artıklara göre grafiğinde pozitif yönlü otokorelasyon görülmektedir.
+
+\newpage
+
+# 1.m) GEKK
+
+##  Rho tahmini 
+
+```{r}
+model <- lm(Maas~.,data=tablo)
+de <- lm(model$residuals~lag(model$residuals)-1)
+summary(de)
+```
+\begin{equation}\hat{u}_{t}=\rho \hat{u}_{t-1}+v_{t}\end{equation}
+
+\begin{equation}\hat{u}_{t}=0.3467 \hat{u}_{t-1}+v_{t}\end{equation}
+$\hat{\rho}$ = 0.3467 olarak tahmin edilmiştir.
+
+## Genelleştirilmiş EKK
+
+```{r}
+rho <- as.numeric(de$coefficients)
+yt <- tablo$Maas
+xt1 <- tablo$Egitim
+xt2 <- tablo$Deneyim
+y_yildiz <- yt-rho*lag(yt)
+x1_yildiz <- xt1-rho*lag(xt1)
+x2_yildiz <- xt2-rho*lag(xt2)
+df <- data.frame(y_yildiz,x1_yildiz,x2_yildiz)
+df <- df[-1,]
+gekk <- lm(y_yildiz~x1_yildiz+x2_yildiz)
+summary(gekk)
+```
+
+- Genelleştirilmiş EKK sonuçlarına göre x1_yildiz(Eğitim) bağımsız değişkeni 0.05 anlamlılık düzeyinde anlamlıdır. p-value=0.001 < 0.05 olduğundan model de genel olarak anlamlıdır. R^2 değeri 0.5716 bulunmuştur. Yani bağımsız değişkenler bağımlı değişkeni %57 oranında açıklamaktadır. GEKK modeli EKK modeline göre daha başarılı bir sonuç vermiştir.
+
+\newpage
+
+# 1.n) Sabit Terimsiz EKK
+
+```{r}
+model2 <- lm(Maas~.-1,data=tablo)
+summary(model2)
+```
+
+Beta0 olan modelde bağımsız değişkenler 0.05 anlamlılık düzeyinde anlamlı değildi ancak Beta0'ı çıkarttıktan sonra bağımsız değişkenler 0.05 anlamlılık düzeyinde anlamlı çıktı. Modelimiz de genel olarak anlamlı oldu. R^2 değeri 0.99'a çıktı. Sonuç olarak çok daha iyi bir model elde edildi. Beta0'ın olmadığı model daha uygundur.
+
+\newpage
+
+# 1.o) Log-Log, İnverse, Quadratic Modeller
+
+## Log-Log Model Sabit Terimli
+
+\begin{equation}\widehat{\ln ({M a a s})}=\hat{\beta}_{0}+\hat{\beta}_{1} \ln (\text {Deneyim})+u_{i}\end{equation}
+
+```{r}
+model_log <- lm(log(Maas)~log(Deneyim),data=tablo)
+summary(model_log)
+```
+
+\begin{equation}\widehat{\ln ({M a a s})}=8.68124-0.01396 \ln (\text {Deneyim})+u_{i}\end{equation}
+
+## Log-Log Model Sabit Terimsiz
+
+\begin{equation}\widehat{\ln ({M a a s})}=\hat{\beta}_{1} \ln (\text {Deneyim})+u_{i}\end{equation}
+
+```{r}
+model_log1 <- lm(log(Maas)~log(Deneyim)-1,data=tablo)
+summary(model_log1)
+```
+
+\begin{equation}\widehat{\ln ({M a a s})}=3.5711\ln (\text {Deneyim})+u_{i}\end{equation}
+
+## İnverse Model Sabit Terimli
+
+\begin{equation}\widehat{\text {Maas}}=\hat{\beta}_{0}+\hat{\beta}_{1} \frac{1}{\text { Deneyim }}+u_{i}\end{equation}
+
+```{r}
+inv_deneyim <- 1/tablo$Deneyim
+Maas <- tablo$Maas
+
+model_inv <- lm(Maas~inv_deneyim)
+summary(model_inv)
+```
+
+
+\begin{equation}\widehat{\text {Maas}}=5607.9+941.6  \frac{1}{\text { Deneyim }}+u_{i}\end{equation}
+
+## İnverse Model Sabit Terimsiz
+
+\begin{equation}\widehat{\text {Maas}}=\hat{\beta}_{1} \frac{1}{\text { Deneyim }}+u_{i}\end{equation}
+
+```{r}
+model_inv1 <- lm(Maas~inv_deneyim-1)
+summary(model_inv1)
+```
+
+\begin{equation}\widehat{\text {Maas}}=43318 \frac{1}{\text { Deneyim }}+u_{i}\end{equation}
+
+## Quadratic Model Sabit Terimli
+
+\begin{equation}\widehat{M a a s}=\hat{\beta}_{0}+\hat{\beta}_{1} \text { Deneyim }+\hat{\beta}_{2} \text { Deneyim }^{2}+u_{i}\end{equation}
+
+```{r}
+model_q <- lm(Maas ~ poly(Deneyim,2) ,data=tablo)
+summary(model_q)
+```
+
+\begin{equation}\widehat{M a a s}=5708.95-114.95 \text { Deneyim }+ 151.71 \text { Deneyim }^{2}+u_{i}\end{equation}
+
+## Quadratic Model Sabit Terimsiz
+
+\begin{equation}\widehat{M a a s}=\hat{\beta}_{1} \text { Deneyim }+\hat{\beta}_{2} \text { Deneyim }^{2}+u_{i}\end{equation}
+
+```{r}
+model_q1 <- lm(Maas ~ poly(Deneyim,2)-1 ,data=tablo)
+summary(model_q1)
+```
+
+\begin{equation}\widehat{M a a s}= -114.9  \text { Deneyim }+151.7 \text { Deneyim }^{2}+u_{i}\end{equation}
+
+#### Sonuç:
+6 Farklı regresyon modelinde en iyi sonucu veren sabit terimsiz Log-Log model olmuştur. R^2 değeri 0.99 olduğundan ve model genel olarak anlamlı olduğundan yukarıdaki modeller arasında Log-Log modeli en mantıklı seçim olacaktır.
+
+\begin{equation}\widehat{\ln ({M a a s})}=3.5711\ln (\text {Deneyim})+u_{i}\end{equation}
+
+\newpage
+
+```{r echo=FALSE, warning=FALSE}
+# Değiştirilmesi gereken yer
+library(readr)
+yillar <- read_delim("C:/Users/gr/Desktop/yillar.csv", 
+    ";", escape_double = FALSE, col_types = cols(X4 = col_skip(), 
+        X5 = col_skip()), trim_ws = TRUE)
+```
+
+# Verinin Düzenlenmesi
+
+```{r}
+yillar$GELIR <- yillar$GELIR + 4 # TcNo. 5. rakamı
+yillar
+```
+
+# 2.a) EKK Modeli
+
+```{r}
+model_ekk <- lm(TUKETIM~GELIR,data=yillar)
+summary(model_ekk)
+```
+Modelde gelir değikeni 0.05 düzeyinde anlamlı çıkmıştır.
+Modelin R^2 değeri 0.98 çıkmıştır. EKK modeli genel olarak anlamlı gözükmektedir. 
+
+# 2.b) Artık Grafikleri
+
+```{r}
+artik <- model_ekk$residuals
+lagartik <- lag(artik)
+df <- data.frame(artik,lagartik)
+df <- df[-1,]
+
+ggplot(df,aes(x=lagartik,y=artik))+
+  geom_jitter()+
+  geom_hline(yintercept = 0) +
+  geom_vline(xintercept = 0) +
+  labs(x="U_(t-1)",y="U_t",title="Kalıntı-Gecikme grafiği")
+```
+- Artıkların bir önceki artıklara göre grafiğinde pozitif yönlü otokorelasyon görülmektedir. Yorumlar subjektif olup gerekli testler ile otokorelasyon test edilmelidir.
+
+```{r}
+artik <- model_ekk$residuals
+lagartik <- lag(artik)
+df <- data.frame(yil =  ymd(sprintf("%d-01-01",yillar$YIL)),artik,lagartik)
+df <- df[-1,]
+
+ggplot(df,aes(x=yil,y=artik))+
+  geom_jitter()+
+  labs(x="Yıllar",y="Kalıntılar",title="Zaman-Kalıntı grafiği")
+```
+- Artıkların zamana göre olan grafiğinde önce artıkların değerinin azaldığı sonra arttığı görülmektedir. Az sayıda veri olduğundan bu grafik üzerinden yorum yapmak daha güçtür. Gerekli testlerle otokorelasyon sınanabilir.
+
+# 2.c) Durbin-Watson Testi
+
+```{r}
+durbinWatsonTest(model_ekk,alternative = "positive")
+```
+
+p-value = 0.005 < 0.05 olduğundan H0 hipotezi (rho=0) reddedilir. H1 hipotezi rho > 0 kabul edilir AR(1) durumu geçerlidir.
+DW testine göre 1. dereceden otokorelasyon vardır.
+EKK modeli R^2'si yüksek ve anlamlı çıksa da otokorelasyona sahiptir. Bu otokorelasyon regresyon varsayımlarını ihlal ettiği için EKK modeli kullanışlı değildir.
+
+\newpage
+
+# 2.d) GEKK
+
+## Rho'nun Durbin-Watson d istatistiği ile tahmin edilmesi
+
+```{r}
+dw <- durbinWatsonTest(model_ekk)
+dw <- dw$dw # D değerinin alınması
+rho_sapka <- 1- dw/2 # rho tahmini
+paste("Tamin edilen Rho değeri = ",round(rho_sapka,4))
+```
+
+## GEKK Modeli
+
+```{r}
+yt <- yillar$TUKETIM
+xt <- yillar$GELIR
+
+y_yildiz <- yt-rho_sapka*lag(yt)  
+x_yildiz <- xt-rho_sapka*lag(xt)
+
+df <- data.frame(y_yildiz,x_yildiz)
+df <- df[-1,]
+gekk <- lm(y_yildiz~x_yildiz)
+summary(gekk)
+```
+
+#### Sonuç:
+GEKK modelinin R^2'si EKK modelinin R^2'sine göre çok az bir farkla düşüktür. GEKK modeli otokorelasyondan arındılarak oluşturulduğu için, GEKK modelinin kullanılması daha doğru olacaktır.
